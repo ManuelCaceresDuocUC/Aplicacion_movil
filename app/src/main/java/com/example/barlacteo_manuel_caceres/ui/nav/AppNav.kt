@@ -1,5 +1,5 @@
 package com.example.barlacteo_manuel_caceres.ui.nav
-
+import com.example.barlacteo_manuel_caceres.ui.profile.ProfileScreen
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -14,7 +14,10 @@ import com.example.barlacteo_manuel_caceres.ui.screens.registro.HomeScreen
 import com.example.barlacteo_manuel_caceres.ui.screens.principal.SiguienteScreen
 import kotlinx.coroutines.launch
 import com.example.barlacteo_manuel_caceres.model.Oferta
-
+import com.example.barlacteo_manuel_caceres.ui.screens.auth.LoginScreen
+import com.example.barlacteo_manuel_caceres.ui.screens.auth.RegisterScreen
+import com.example.barlacteo_manuel_caceres.ui.nav.Route
+import androidx.compose.ui.platform.LocalContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNav(modifier: Modifier = Modifier) {
@@ -24,42 +27,66 @@ fun AppNav(modifier: Modifier = Modifier) {
 
     val backEntry by nav.currentBackStackEntryAsState()
     val currentRoute = backEntry?.destination?.route.orEmpty()
-    val isHome = currentRoute == Route.Home.path
+    val isLoginOrRegister = currentRoute == Route.Login.path || currentRoute == Route.Register.path
+    val ctx = LocalContext.current
+    val accountRepo = remember { com.example.barlacteo_manuel_caceres.data.AccountRepository(ctx) }
+    val currentAccount by remember { accountRepo.currentAccountFlow }.collectAsState(initial = null)
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = !isHome,                 // sin gesto en Home
+        gesturesEnabled = !isLoginOrRegister,
         drawerContent = {
             ModalDrawerSheet {
                 Text("BarLácteo", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
                 NavigationDrawerItem(
-                    label = { Text("Registro") },
-                    selected = isHome,
+                    label = { Text("Inicio") },
+                    selected = currentRoute.startsWith("siguiente"),
                     onClick = {
-                        nav.navigate(Route.Home.path) {
-                            popUpTo(nav.graph.startDestinationId) { inclusive = false }
-                            launchSingleTop = true
-                        }
+                        val nombre = currentAccount?.nombre ?: "Invitado"
+                        val fono = currentAccount?.fono ?: "+56912345678"
+                        nav.navigate(Route.Siguiente.to(nombre, fono)) { launchSingleTop = true }
                         scope.launch { drawerState.close() }
                     }
                 )
                 NavigationDrawerItem(
-                    label = { Text("Inicio") },
-                    selected = currentRoute.startsWith("siguiente"),
+                    label = { Text("Perfil") },
+                    selected = currentRoute == Route.Perfil.path,
                     onClick = {
-                        nav.navigate(Route.Siguiente.to("Invitado", "+56912345678")) { launchSingleTop = true }
+                        nav.navigate(Route.Perfil.path) { launchSingleTop = true }
                         scope.launch { drawerState.close() }
                     }
                 )
+                NavigationDrawerItem(
+                    label = { Text("Cerrar sesión") },
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            // 1) limpiar sesión
+                            accountRepo.logout()
+                            // 2) cerrar el drawer antes de navegar
+                            drawerState.close()
+                            // 3) navegar a Login limpiando el back stack
+                            nav.navigate(Route.Login.path) {
+                                popUpTo(nav.graph.startDestinationId) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
+                )
+
             }
         }
     ) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(if (isHome) "Registro" else "BarLácteo") },
+                    title = { Text( when {
+                        currentRoute == Route.Login.path -> "Inicio de sesión"
+                        currentRoute == Route.Register.path -> "Crear cuenta"
+                        else -> "BarLácteo"
+                    }) },
                     navigationIcon = {
-                        if (!isHome) { // no mostrar menú en Home
+                        if (!isLoginOrRegister) {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
                                 Icon(Icons.Filled.Menu, contentDescription = "Abrir menú")
                             }
@@ -70,16 +97,30 @@ fun AppNav(modifier: Modifier = Modifier) {
         ) { inner ->
             NavHost(
                 navController = nav,
-                startDestination = Route.Home.path,
+                startDestination = Route.Login.path,
                 modifier = modifier.padding(inner)
             ) {
-                composable(Route.Home.path) {
-                    HomeScreen(
-                        onContinue = { nombre, fono ->
-                            nav.navigate(Route.Siguiente.to(nombre, fono))
-                        }
+                composable(Route.Login.path) {
+                    LoginScreen(
+                        onLoginOk = { nombre, fono ->
+                            nav.navigate(Route.Siguiente.to(nombre, fono)) {
+                                popUpTo(Route.Login.path) { inclusive = true }
+                            }
+                        },
+                        onGoRegister = { nav.navigate(Route.Register.path) }
                     )
                 }
+                composable(Route.Register.path) {
+                    RegisterScreen(
+                        onRegistered = { nombre, fono ->
+                            nav.navigate(Route.Siguiente.to(nombre, fono)) {
+                                popUpTo(Route.Login.path) { inclusive = true }
+                            }
+                        },
+                        onBack = { nav.popBackStack() }
+                    )
+                }
+                // tu pantalla principal
                 composable(
                     route = Route.Siguiente.path,
                     arguments = listOf(
@@ -89,24 +130,25 @@ fun AppNav(modifier: Modifier = Modifier) {
                 ) { backStack ->
                     val nombre = backStack.arguments?.getString("nombre").orEmpty()
                     val fono = backStack.arguments?.getString("fono").orEmpty()
-
                     val demo = listOf(
-                        Oferta("1","2x1 Sándwich","Solo hoy","https://picsum.photos/seed/ba1/900/500"),
-                        Oferta("2","Combo Café + Brownie","12:00-14:00","https://picsum.photos/seed/ba2/900/500"),
-                        Oferta("3","Descuento estudiantes","Con credencial","https://picsum.photos/seed/ba3/900/500"),
+                        com.example.barlacteo_manuel_caceres.model.Oferta("1","2x1 Sándwich","Solo hoy","https://picsum.photos/seed/ba1/900/500"),
+                        com.example.barlacteo_manuel_caceres.model.Oferta("2","Combo Café + Brownie","12:00-14:00","https://picsum.photos/seed/ba2/900/500"),
+                        com.example.barlacteo_manuel_caceres.model.Oferta("3","Descuento estudiantes","Con credencial","https://picsum.photos/seed/ba3/900/500")
                     )
-
-                    SiguienteScreen(
+                    com.example.barlacteo_manuel_caceres.ui.screens.principal.SiguienteScreen(
                         nombre = nombre,
                         fono = fono,
                         onBack = { nav.popBackStack() },
                         ofertas = demo,
-                        onClickOferta = { /* navegar a detalle */ }
+                        onClickOferta = { }
                     )
                 }
-
+                composable(Route.Perfil.path) {
+                    com.example.barlacteo_manuel_caceres.ui.profile.ProfileScreen(
+                        onBack = { nav.popBackStack() }
+                    )
+                }
             }
         }
     }
 }
-
