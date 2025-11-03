@@ -2,8 +2,8 @@ package com.example.barlacteo_manuel_caceres.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.barlacteo_manuel_caceres.data.ProfileRepository
-import com.example.barlacteo_manuel_caceres.model.Profile
+import com.example.barlacteo_manuel_caceres.data.local.ProfileRepository
+import com.example.barlacteo_manuel_caceres.domain.model.Profile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update

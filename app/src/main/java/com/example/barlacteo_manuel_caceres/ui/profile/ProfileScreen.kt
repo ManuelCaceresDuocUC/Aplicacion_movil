@@ -1,5 +1,5 @@
 package com.example.barlacteo_manuel_caceres.ui.profile
-import com.example.barlacteo_manuel_caceres.data.AccountRepository
+import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
 
 import android.Manifest
 import android.content.ContentValues
@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import com.example.barlacteo_manuel_caceres.data.ProfileRepository
-
+import com.example.barlacteo_manuel_caceres.data.local.ProfileRepository
+import androidx.compose.animation.Crossfade
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
@@ -82,16 +82,16 @@ fun ProfileScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Foto
-            if (state.fotoUri.isNotBlank()) {
-                AsyncImage(
-                    model = state.fotoUri,
-                    contentDescription = "Foto de perfil",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp)
-                )
-            } else {
-                Text("Sin foto")
+            Crossfade(targetState = state.fotoUri) { uri ->
+                if (uri.isNotBlank()) {
+                    AsyncImage(
+                        model = uri,
+                        contentDescription = "Foto de perfil",
+                        modifier = Modifier.fillMaxWidth().height(220.dp)
+                    )
+                } else {
+                    Text("Sin foto")
+                }
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

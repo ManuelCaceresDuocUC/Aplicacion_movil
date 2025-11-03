@@ -1,5 +1,4 @@
 package com.example.barlacteo_manuel_caceres.ui.nav
-import com.example.barlacteo_manuel_caceres.ui.profile.ProfileScreen
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -10,14 +9,16 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
-import com.example.barlacteo_manuel_caceres.ui.screens.registro.HomeScreen
-import com.example.barlacteo_manuel_caceres.ui.screens.principal.SiguienteScreen
+import com.example.barlacteo_manuel_caceres.ui.catalog.CatalogScreen
+
 import kotlinx.coroutines.launch
-import com.example.barlacteo_manuel_caceres.model.Oferta
-import com.example.barlacteo_manuel_caceres.ui.screens.auth.LoginScreen
-import com.example.barlacteo_manuel_caceres.ui.screens.auth.RegisterScreen
-import com.example.barlacteo_manuel_caceres.ui.nav.Route
+import com.example.barlacteo_manuel_caceres.domain.model.Oferta
+import com.example.barlacteo_manuel_caceres.ui.auth.LoginScreen
+import com.example.barlacteo_manuel_caceres.ui.auth.RegisterScreen
 import androidx.compose.ui.platform.LocalContext
+import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
+import com.example.barlacteo_manuel_caceres.ui.principal.SiguienteScreen
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNav(modifier: Modifier = Modifier) {
@@ -29,7 +30,7 @@ fun AppNav(modifier: Modifier = Modifier) {
     val currentRoute = backEntry?.destination?.route.orEmpty()
     val isLoginOrRegister = currentRoute == Route.Login.path || currentRoute == Route.Register.path
     val ctx = LocalContext.current
-    val accountRepo = remember { com.example.barlacteo_manuel_caceres.data.AccountRepository(ctx) }
+    val accountRepo = remember { AccountRepository(ctx) }
     val currentAccount by remember { accountRepo.currentAccountFlow }.collectAsState(initial = null)
 
     ModalNavigationDrawer(
@@ -53,6 +54,14 @@ fun AppNav(modifier: Modifier = Modifier) {
                     selected = currentRoute == Route.Perfil.path,
                     onClick = {
                         nav.navigate(Route.Perfil.path) { launchSingleTop = true }
+                        scope.launch { drawerState.close() }
+                    }
+                )
+                NavigationDrawerItem(
+                    label = { Text("Catálogo") },
+                    selected = currentRoute == Route.Catalog.path,
+                    onClick = {
+                        nav.navigate(Route.Catalog.path) { launchSingleTop = true }
                         scope.launch { drawerState.close() }
                     }
                 )
@@ -131,11 +140,11 @@ fun AppNav(modifier: Modifier = Modifier) {
                     val nombre = backStack.arguments?.getString("nombre").orEmpty()
                     val fono = backStack.arguments?.getString("fono").orEmpty()
                     val demo = listOf(
-                        com.example.barlacteo_manuel_caceres.model.Oferta("1","2x1 Sándwich","Solo hoy","https://picsum.photos/seed/ba1/900/500"),
-                        com.example.barlacteo_manuel_caceres.model.Oferta("2","Combo Café + Brownie","12:00-14:00","https://picsum.photos/seed/ba2/900/500"),
-                        com.example.barlacteo_manuel_caceres.model.Oferta("3","Descuento estudiantes","Con credencial","https://picsum.photos/seed/ba3/900/500")
+                        Oferta("1","Combo 1","Aprovecha ya !","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo1.jpg"),
+                        Oferta("2","Combo 2","Delicioso","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo2.jpg"),
+                        Oferta("3","Combo 3","Con credencial","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo3.jpg")
                     )
-                    com.example.barlacteo_manuel_caceres.ui.screens.principal.SiguienteScreen(
+                    SiguienteScreen(
                         nombre = nombre,
                         fono = fono,
                         onBack = { nav.popBackStack() },
@@ -145,6 +154,12 @@ fun AppNav(modifier: Modifier = Modifier) {
                 }
                 composable(Route.Perfil.path) {
                     com.example.barlacteo_manuel_caceres.ui.profile.ProfileScreen(
+                        onBack = { nav.popBackStack() }
+                    )
+                }
+                composable(Route.Catalog.path) {
+                    CatalogScreen(
+                        csvUrl = "https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/catalogo_fronted.csv",
                         onBack = { nav.popBackStack() }
                     )
                 }
