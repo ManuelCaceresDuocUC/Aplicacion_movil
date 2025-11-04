@@ -18,7 +18,14 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.barlacteo_manuel_caceres.data.repository.CatalogRepository
 import com.example.barlacteo_manuel_caceres.domain.model.Producto
+import androidx.compose.foundation.layout.FlowRow
 
+/**
+ * Pantalla de catálogo con:
+ * - Búsqueda por texto
+ * - Filtro por categoría
+ * - Grid adaptativo de productos
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogScreen(
@@ -26,7 +33,12 @@ fun CatalogScreen(
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
-    val vm: CatalogViewModel = viewModel(factory = CatalogVMFactory(CatalogRepository(csvUrl)))
+
+    // VM con repo que consume el CSV remoto
+    val vm: CatalogViewModel =
+        viewModel(factory = CatalogVMFactory(CatalogRepository(csvUrl)))
+
+    // Estado observable de la pantalla
     val st by vm.state.collectAsState()
 
     Scaffold(
@@ -37,11 +49,15 @@ fun CatalogScreen(
             )
         }
     ) { inner ->
-        Column(Modifier.padding(inner).padding(12.dp)) {
-            // Buscador
+        Column(
+            Modifier
+                .padding(inner)
+                .padding(12.dp)
+        ) {
+            // ===== Buscador =====
             OutlinedTextField(
                 value = st.query,
-                onValueChange = vm::setQuery,
+                onValueChange = vm::setQuery,                 // delega cambio al VM
                 label = { Text("Buscar productos") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -49,19 +65,24 @@ fun CatalogScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            // Chips por categoría (dinámico)
+            // ===== Chips de categoría (dinámicos) =====
+            // Distinct de categorías a partir de los items cargados.
             val cats = remember(st.items) { st.items.map { it.category }.distinct() }
+
+            // FlowRow permite saltar de línea de forma fluida.
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Chip "Todas" = sin filtro
                 AssistChip(
                     onClick = { vm.setCategory(null) },
                     label = { Text("Todas") },
-                    leadingIcon = {},
+                    // enabled solo si hay un filtro activo; si ya está en "Todas", se deshabilita
                     enabled = st.categoryFilter != null
                 )
                 cats.forEach { c ->
                     AssistChip(
                         onClick = { vm.setCategory(c) },
                         label = { Text(c) },
+                        // deshabilita el chip cuando ya está seleccionado
                         enabled = st.categoryFilter != c
                     )
                 }
@@ -69,6 +90,7 @@ fun CatalogScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            // ===== Contenido según estado =====
             when {
                 st.loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -83,13 +105,16 @@ fun CatalogScreen(
                     }
                 }
                 else -> {
+                    // Lista ya filtrada en memoria por VM
                     val items = vm.filtered()
+
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(minSize = 160.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        // Si tu modelo tiene id estable, usa key = { it.id }
                         items(items) { p ->
                             ProductoCard(p)
                         }
@@ -100,9 +125,13 @@ fun CatalogScreen(
     }
 }
 
+/**
+ * Tarjeta de producto con imagen, título, descripción corta, categoría y precio.
+ */
 @Composable
 private fun ProductoCard(p: Producto) {
     ElevatedCard(shape = RoundedCornerShape(16.dp)) {
+        // Imagen con crossfade. Puedes añadir placeholder/error si tu versión de Coil lo soporta.
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(p.imageUrl)
@@ -113,11 +142,15 @@ private fun ProductoCard(p: Producto) {
                 .fillMaxWidth()
                 .height(120.dp)
         )
+
         Column(Modifier.padding(12.dp)) {
             Text(p.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(p.description, style = MaterialTheme.typography.bodySmall, maxLines = 2)
             Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 AssistChip(onClick = {}, label = { Text(p.category) })
                 Text(p.price, style = MaterialTheme.typography.titleSmall)
             }

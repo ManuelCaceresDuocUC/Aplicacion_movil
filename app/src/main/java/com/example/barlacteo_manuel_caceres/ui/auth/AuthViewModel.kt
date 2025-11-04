@@ -43,10 +43,12 @@ class AuthViewModel(private val repo: AccountRepository): ViewModel() {
             fono = v,
             isFonoValid = ok,
             errorFono = if (ok) null else "Formato: +569########",
-            canSubmit = ok && s.isNombreValid,
+            canSubmit = ok && s.isNombreValid ,
             error = null
         )
     }
+
+
 
     fun login(onSuccess: () -> Unit) = viewModelScope.launch {
         val s = _state.value

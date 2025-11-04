@@ -21,11 +21,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.barlacteo_manuel_caceres.R
 
+/**
+ * Pantalla principal con app bar colapsable y formulario de registro.
+ * @param onContinue callback que recibe (nombre, teléfono) cuando el form es válido.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onContinue: (String, String) -> Unit) {   // <-- agrega el callback aquí
+fun HomeScreen(onContinue: (String, String) -> Unit) {
+    // Estado para el comportamiento de la AppBar al hacer scroll.
     val appBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(appBarState)
+
+    // Permite cerrar el teclado al tocar fuera de los campos.
     val focus = LocalFocusManager.current
 
     Scaffold(
@@ -42,17 +49,21 @@ fun HomeScreen(onContinue: (String, String) -> Unit) {   // <-- agrega el callba
                 .padding(inner)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                // Cierra foco/teclado cuando el usuario toca el fondo.
                 .pointerInput(Unit) { detectTapGestures { focus.clearFocus() } }
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Logo del local.
             Image(
                 painter = painterResource(R.drawable.logo_bartolo),
-                contentDescription = null,
+                contentDescription = null, // Opcional: añade texto para accesibilidad.
                 modifier = Modifier.size(120.dp)
             )
-            FormRegistro(                                     // <-- pásalo al form
+
+            // Formulario de nombre y teléfono. Levanta los datos vía callback.
+            FormRegistro(
                 modifier = Modifier.fillMaxWidth(),
                 onContinue = onContinue
             )
@@ -60,15 +71,22 @@ fun HomeScreen(onContinue: (String, String) -> Unit) {   // <-- agrega el callba
     }
 }
 
+/**
+ * Formulario de registro básico: nombre y teléfono chileno.
+ * Valida formato: +569######## y habilita el botón Continuar.
+ */
 @Composable
 fun FormRegistro(
     modifier: Modifier = Modifier,
-    onContinue: (String, String) -> Unit                    // <-- define el callback aquí
+    onContinue: (String, String) -> Unit
 ) {
     val focus = LocalFocusManager.current
+
+    // Estado persistente ante recomposición y rotación.
     var nombre by rememberSaveable { mutableStateOf("") }
     var telefono by rememberSaveable { mutableStateOf("") }
 
+    // Reglas de validación simples.
     val nombreOk = nombre.isNotBlank()
     val fonoOk = telefono.matches(Regex("^\\+569\\d{8}$"))
 
@@ -76,6 +94,7 @@ fun FormRegistro(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Campo: Nombre
         OutlinedTextField(
             value = nombre,
             onValueChange = { nombre = it },
@@ -84,6 +103,8 @@ fun FormRegistro(
             modifier = Modifier.fillMaxWidth(),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
         )
+
+        // Campo: Teléfono. Muestra error si no respeta el patrón +569########
         OutlinedTextField(
             value = telefono,
             onValueChange = { telefono = it },
@@ -103,6 +124,7 @@ fun FormRegistro(
 
         Spacer(Modifier.height(30.dp))
 
+        // Acción principal. Solo habilitada si ambas validaciones pasan.
         Button(
             onClick = { if (nombreOk && fonoOk) onContinue(nombre.trim(), telefono.trim()) },
             enabled = nombreOk && fonoOk,

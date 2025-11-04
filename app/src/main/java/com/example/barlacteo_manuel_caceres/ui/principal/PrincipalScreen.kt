@@ -18,21 +18,34 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
+import kotlinx.coroutines.isActive
+
+/**
+ * Pantalla posterior al registro.
+ * Muestra saludo, teléfono y un carrusel de ofertas auto-deslizable.
+ *
+ * @param nombre Nombre del usuario.
+ * @param fono   Teléfono del usuario.
+ * @param onBack Acción al volver.
+ * @param ofertas Lista de ofertas a rotar en el carrusel.
+ * @param onClickOferta Acción al tocar una oferta.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SiguienteScreen(
     nombre: String,
     fono: String,
     onBack: () -> Unit,
-    ofertas: List<Oferta> = emptyList(),            // <— pásalas desde Nav o usa dummy
+    ofertas: List<Oferta> = emptyList(),
     onClickOferta: (Oferta) -> Unit = {}
 ) {
+    // Estado del pager: al menos 1 para evitar crash al medir cuando la lista está vacía.
     val pagerState = rememberPagerState(pageCount = { ofertas.size.coerceAtLeast(1) })
 
-    // Autodeslizamiento cada 4 s
+    // ---- Auto-scroll cada 4 s cuando hay ofertas ----
     LaunchedEffect(ofertas.size) {
         if (ofertas.isNotEmpty()) {
-            while (true) {
+            while (isActive) {                  // respeta cancelación al salir de composición
                 delay(4000)
                 val next = (pagerState.currentPage + 1) % ofertas.size
                 pagerState.animateScrollToPage(next)
@@ -52,7 +65,7 @@ fun SiguienteScreen(
             Text("Hola, $nombre", style = MaterialTheme.typography.headlineSmall)
             Text("Tu teléfono: $fono", style = MaterialTheme.typography.bodyLarge)
 
-            // === CARRUSEL AQUÍ ===
+            // ===== Carrusel de ofertas =====
             if (ofertas.isNotEmpty()) {
                 HorizontalPager(
                     state = pagerState,
@@ -69,6 +82,7 @@ fun SiguienteScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Column {
+                            // Imagen de portada 16:9 con recorte a esquinas superiores.
                             AsyncImage(
                                 model = o.imagenUrl,
                                 contentDescription = o.titulo,
@@ -90,10 +104,9 @@ fun SiguienteScreen(
                             }
                         }
                     }
-
                 }
 
-                // Indicadores
+                // Indicadores de página
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
@@ -115,17 +128,14 @@ fun SiguienteScreen(
                 }
             }
 
-            Divider(Modifier.padding(vertical = 8.dp))
 
-            // Botón volver
-            Button(
-                onClick = onBack,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Volver") }
+
+
         }
     }
-
 }
+
+// ---- Preview con datos de ejemplo ----
 @Preview(showBackground = true)
 @Composable
 private fun SiguienteScreenPreview() {
@@ -134,11 +144,5 @@ private fun SiguienteScreenPreview() {
         Oferta("2","Combo 2","Delicioso","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo2.jpg"),
         Oferta("3","Combo 3","Con credencial","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo3.jpg")
     )
-    SiguienteScreen(
-        nombre = "Manuel",
-        fono = "+56912345678",
-        onBack = {},
-        ofertas = demo,
-        onClickOferta = {}
-    )
+
 }
