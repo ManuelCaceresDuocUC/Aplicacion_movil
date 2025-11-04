@@ -58,17 +58,15 @@ fun ProfileScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val accountRepo = remember { AccountRepository(context) }
+    val profileRepo = remember { ProfileRepository(context) }
 
-    // Instancia del ViewModel con fábrica que inyecta el ProfileRepository.
-    // El VM expone: state.nombre, state.fono, state.fotoUri y métodos update/save.
-    val vm: ProfileViewModel = viewModel(factory = ProfileVMFactory(ProfileRepository(context)))
+    val vm: ProfileViewModel = viewModel(
+        factory = ProfileVMFactory(profileRepo, accountRepo)
+    )
     val state by vm.state.collectAsState()
 
-    // Repo de cuenta actual para pre-cargar datos.
-    val accountRepo = remember { AccountRepository(context) }
     val currentAccount by accountRepo.currentAccountFlow.collectAsState(initial = null)
-
-    // Cuando hay cuenta, precarga nombre y fono. Se ejecuta solo cuando cambia currentAccount.
     LaunchedEffect(currentAccount) {
         currentAccount?.let { vm.prefill(it.nombre, it.fono) }
     }

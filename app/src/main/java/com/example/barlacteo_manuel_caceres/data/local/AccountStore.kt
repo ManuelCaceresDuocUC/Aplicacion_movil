@@ -73,4 +73,31 @@ class AccountRepository(private val context: Context) {
             if (parts.size == 2) Account(nombre = parts[1], fono = parts[0]) else null
         }
     }
+    suspend fun upsertAndSetCurrent(nombre: String, fono: String): Result<Unit> {
+        // valida formato si quieres mantener la misma regla
+        if (!fono.matches(Regex("^\\+569\\d{8}$"))) return Result.failure(IllegalArgumentException("Fono inválido"))
+        if (nombre.isBlank()) return Result.failure(IllegalArgumentException("Nombre vacío"))
+
+        return try {
+            context.dataStore.edit { p ->
+                val set = p[Keys.ACCOUNTS].orEmpty().toMutableSet()
+                val prev = p[Keys.CURRENT]
+
+                // si cambió el fono respecto al CURRENT anterior, borra la entrada vieja
+                if (prev != null && prev != fono) {
+                    set.removeIf { it.startsWith("$prev|") }
+                }
+
+                // evita duplicados por el nuevo fono
+                set.removeIf { it.startsWith("$fono|") }
+                set += "$fono|$nombre"
+
+                p[Keys.ACCOUNTS] = set
+                p[Keys.CURRENT] = fono
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

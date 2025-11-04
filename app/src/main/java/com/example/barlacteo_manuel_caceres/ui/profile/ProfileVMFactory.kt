@@ -3,6 +3,7 @@ package com.example.barlacteo_manuel_caceres.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.barlacteo_manuel_caceres.data.local.ProfileRepository
+import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
 
 /**
  * Factory para crear ProfileViewModel con su dependencia ProfileRepository.
@@ -11,16 +12,14 @@ import com.example.barlacteo_manuel_caceres.data.local.ProfileRepository
  *   val vm: ProfileViewModel = viewModel(factory = ProfileVMFactory(repo))
  */
 class ProfileVMFactory(
-    private val repo: ProfileRepository
+    private val profileRepo: ProfileRepository,
+    private val accountRepo: AccountRepository
 ) : ViewModelProvider.Factory {
-
-    @Suppress("UNCHECKED_CAST") // El cast es seguro tras verificar el tipo.
+    @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        // Verificación robusta del tipo solicitado.
         if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
-            return ProfileViewModel(repo) as T
+            return ProfileViewModel(profileRepo, accountRepo) as T
         }
-        // Si piden otro VM, falla explícito y claro.
         throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
 }
