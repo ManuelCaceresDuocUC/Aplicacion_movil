@@ -1,66 +1,68 @@
 package com.example.barlacteo_manuel_caceres.ui.nav
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.barlacteo_manuel_caceres.ui.catalog.CatalogScreen
-
-import kotlinx.coroutines.launch
 import com.example.barlacteo_manuel_caceres.domain.model.Oferta
 import com.example.barlacteo_manuel_caceres.ui.auth.LoginScreen
 import com.example.barlacteo_manuel_caceres.ui.auth.RegisterScreen
-import androidx.compose.ui.platform.LocalContext
 import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
 import com.example.barlacteo_manuel_caceres.ui.principal.SiguienteScreen
 
-/**
- * Gráfico de navegación principal con Drawer.
- * Rutas: Login, Register, Siguiente(nombre,fono), Perfil, Catálogo.
- */
+// carrito
+import com.example.barlacteo_manuel_caceres.data.local.CartStore
+import com.example.barlacteo_manuel_caceres.data.repository.CartRepository
+import com.example.barlacteo_manuel_caceres.ui.cart.CartSidePanel
+import com.example.barlacteo_manuel_caceres.ui.cart.CartViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppNav(modifier: Modifier = Modifier) {
-    // Controlador de navegación.
     val nav = rememberNavController()
-
-    // Alcance para abrir/cerrar drawer sin bloquear UI.
     val scope = rememberCoroutineScope()
-
-    // Estado del Drawer.
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    // Ruta actual para marcar selección y condicionar UI.
     val backEntry by nav.currentBackStackEntryAsState()
     val currentRoute = backEntry?.destination?.route.orEmpty()
-
-    // En pantallas de auth se deshabilita Drawer y el ícono hamburguesa.
     val isLoginOrRegister = currentRoute == Route.Login.path || currentRoute == Route.Register.path
 
-    // Cuenta actual para precargar nombre/fono en “Inicio”.
     val ctx = LocalContext.current
     val accountRepo = remember { AccountRepository(ctx) }
     val currentAccount by remember { accountRepo.currentAccountFlow }.collectAsState(initial = null)
 
-    // ----- Drawer + Scaffold -----
+    // userId para el carrito: usa fono si lo tienes; si no, “guest”
+    val userId = (currentAccount?.fono ?: "guest")
+
+    // VM del carrito: vive aquí para que el FAB aparezca en todas las pantallas post-login
+    val cartVm = remember(userId) {
+        val repo = CartRepository(CartStore(ctx), CoroutineScope(SupervisorJob() + Dispatchers.IO))
+        CartViewModel(repo, userId)
+    }
+    val cart by cartVm.state.collectAsState()
+
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = !isLoginOrRegister, // bloquea gesto en login/register
+        gesturesEnabled = !isLoginOrRegister,
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    "BarLácteo",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                // Item: Inicio -> navega a Siguiente con nombre/fono
+                Text("BarLácteo", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
                 NavigationDrawerItem(
                     label = { Text("Inicio") },
                     selected = currentRoute.startsWith("siguiente"),
@@ -71,8 +73,6 @@ fun AppNav(modifier: Modifier = Modifier) {
                         scope.launch { drawerState.close() }
                     }
                 )
-
-                // Item: Perfil
                 NavigationDrawerItem(
                     label = { Text("Perfil") },
                     selected = currentRoute == Route.Perfil.path,
@@ -81,8 +81,6 @@ fun AppNav(modifier: Modifier = Modifier) {
                         scope.launch { drawerState.close() }
                     }
                 )
-
-                // Item: Catálogo
                 NavigationDrawerItem(
                     label = { Text("Catálogo") },
                     selected = currentRoute == Route.Catalog.path,
@@ -91,18 +89,13 @@ fun AppNav(modifier: Modifier = Modifier) {
                         scope.launch { drawerState.close() }
                     }
                 )
-
-                // Item: Cerrar sesión
                 NavigationDrawerItem(
                     label = { Text("Cerrar sesión") },
                     selected = false,
                     onClick = {
                         scope.launch {
-                            // 1) limpiar sesión
                             accountRepo.logout()
-                            // 2) cerrar drawer antes de navegar
                             drawerState.close()
-                            // 3) navegar a Login limpiando back stack
                             nav.navigate(Route.Login.path) {
                                 popUpTo(nav.graph.startDestinationId) { inclusive = true }
                                 launchSingleTop = true
@@ -133,79 +126,93 @@ fun AppNav(modifier: Modifier = Modifier) {
                         }
                     }
                 )
+            },
+            floatingActionButton = {
+                if (!isLoginOrRegister) {
+                    FloatingActionButton(onClick = { cartVm.togglePanel() }) {
+                        BadgedBox(badge = { if (cart.count > 0) Badge { Text(cart.count.toString()) } }) {
+                            Icon(Icons.Filled.ShoppingCart, contentDescription = "Carrito")
+                        }
+                    }
+                }
             }
         ) { inner ->
-            // ----- Host de navegación -----
-            NavHost(
-                navController = nav,
-                startDestination = Route.Login.path, // flujo arranca en Login
-                modifier = modifier.padding(inner)
-            ) {
-                // Pantalla: Login
-                composable(Route.Login.path) {
-                    LoginScreen(
-                        onLoginOk = { nombre, fono ->
-                            nav.navigate(Route.Siguiente.to(nombre, fono)) {
-                                popUpTo(Route.Login.path) { inclusive = true } // limpia auth del stack
-                            }
-                        },
-                        onGoRegister = { nav.navigate(Route.Register.path) }
-                    )
+            // Capa para poder superponer el sidebar del carrito sobre el contenido
+            Box(Modifier.padding(inner)) {
+                NavHost(
+                    navController = nav,
+                    startDestination = Route.Login.path,
+                    modifier = modifier
+                ) {
+                    composable(Route.Login.path) {
+                        LoginScreen(
+                            onLoginOk = { nombre, fono ->
+                                nav.navigate(Route.Siguiente.to(nombre, fono)) {
+                                    popUpTo(Route.Login.path) { inclusive = true }
+                                }
+                            },
+                            onGoRegister = { nav.navigate(Route.Register.path) }
+                        )
+                    }
+                    composable(Route.Register.path) {
+                        RegisterScreen(
+                            onRegistered = { nombre, fono ->
+                                nav.navigate(Route.Siguiente.to(nombre, fono)) {
+                                    popUpTo(Route.Login.path) { inclusive = true }
+                                }
+                            },
+                            onBack = { nav.popBackStack() }
+                        )
+                    }
+                    composable(
+                        route = Route.Siguiente.path,
+                        arguments = listOf(
+                            navArgument("nombre") { type = NavType.StringType },
+                            navArgument("fono") { type = NavType.StringType }
+                        )
+                    ) { backStack ->
+                        val nombre = backStack.arguments?.getString("nombre").orEmpty()
+                        val fono = backStack.arguments?.getString("fono").orEmpty()
+                        val demo = listOf(
+                            Oferta("1","Combo 1","Aprovecha ya !","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo1.jpg"),
+                            Oferta("2","Combo 2","Delicioso","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo2.jpg"),
+                            Oferta("3","Combo 3","Con credencial","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo3.jpg")
+                        )
+                        com.example.barlacteo_manuel_caceres.ui.principal.SiguienteScreen(
+                            nombre = nombre,
+                            fono = fono,
+                            onBack = { nav.popBackStack() },
+                            ofertas = demo,
+                            onClickOferta = { /* opcional */ }
+                        )
+                    }
+                    composable(Route.Perfil.path) {
+                        com.example.barlacteo_manuel_caceres.ui.profile.ProfileScreen(
+                            onBack = { nav.popBackStack() }
+                        )
+                    }
+                    composable(Route.Catalog.path) {
+                        // Pasa el VM para que las tarjetas puedan agregar al carrito
+                        CatalogScreen(
+                            csvUrl = "https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/catalogo_fronted.csv",
+                            onBack = { nav.popBackStack() },
+                            cartVm = cartVm
+                        )
+                    }
                 }
 
-                // Pantalla: Registro
-                composable(Route.Register.path) {
-                    RegisterScreen(
-                        onRegistered = { nombre, fono ->
-                            nav.navigate(Route.Siguiente.to(nombre, fono)) {
-                                popUpTo(Route.Login.path) { inclusive = true }
-                            }
-                        },
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // Pantalla principal: Siguiente(nombre, fono)
-                composable(
-                    route = Route.Siguiente.path,
-                    arguments = listOf(
-                        navArgument("nombre") { type = NavType.StringType },
-                        navArgument("fono") { type = NavType.StringType }
-                    )
-                ) { backStack ->
-                    val nombre = backStack.arguments?.getString("nombre").orEmpty()
-                    val fono = backStack.arguments?.getString("fono").orEmpty()
-
-                    // Demo de ofertas. En producción: venir desde VM/Repo.
-                    val demo = listOf(
-                        Oferta("1","Combo 1","Aprovecha ya !","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo1.jpg"),
-                        Oferta("2","Combo 2","Delicioso","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo2.jpg"),
-                        Oferta("3","Combo 3","Con credencial","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo3.jpg")
-                    )
-
-                    SiguienteScreen(
-                        nombre = nombre,
-                        fono = fono,
-                        onBack = { nav.popBackStack() },
-                        ofertas = demo,
-                        onClickOferta = { /* navegar a detalle si procede */ }
-                    )
-                }
-
-                // Pantalla: Perfil
-                composable(Route.Perfil.path) {
-                    com.example.barlacteo_manuel_caceres.ui.profile.ProfileScreen(
-                        onBack = { nav.popBackStack() }
-                    )
-                }
-
-                // Pantalla: Catálogo
-                composable(Route.Catalog.path) {
-                    CatalogScreen(
-                        csvUrl = "https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/catalogo_fronted.csv",
-                        onBack = { nav.popBackStack() }
-                    )
-                }
+                // Sidebar del carrito
+                CartSidePanel(
+                    open = cart.isPanelOpen,
+                    items = cart.items,
+                    totalCents = cart.totalCents,
+                    onClose = cartVm::closePanel,
+                    onInc = cartVm::inc,
+                    onDec = cartVm::dec,
+                    onRemove = cartVm::remove,
+                    onClear = cartVm::clear,
+                    onCheckout = { /* TODO checkout */ }
+                )
             }
         }
     }

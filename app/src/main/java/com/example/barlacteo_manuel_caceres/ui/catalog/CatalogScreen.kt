@@ -1,5 +1,7 @@
 package com.example.barlacteo_manuel_caceres.ui.catalog
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -19,6 +21,8 @@ import coil.request.ImageRequest
 import com.example.barlacteo_manuel_caceres.data.repository.CatalogRepository
 import com.example.barlacteo_manuel_caceres.domain.model.Producto
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.barlacteo_manuel_caceres.ui.cart.CartViewModel
 
 /**
  * Pantalla de catálogo con:
@@ -30,7 +34,9 @@ import androidx.compose.foundation.layout.FlowRow
 @Composable
 fun CatalogScreen(
     csvUrl: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    cartVm: CartViewModel               // ← NUEVO
+
 ) {
     val ctx = LocalContext.current
 
@@ -114,9 +120,8 @@ fun CatalogScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Si tu modelo tiene id estable, usa key = { it.id }
                         items(items) { p ->
-                            ProductoCard(p)
+                            ProductoCard(p = p, cartVm = cartVm)   // ← pasar VM
                         }
                     }
                 }
@@ -129,30 +134,41 @@ fun CatalogScreen(
  * Tarjeta de producto con imagen, título, descripción corta, categoría y precio.
  */
 @Composable
-private fun ProductoCard(p: Producto) {
+fun ProductoCard(
+    p: Producto,
+    cartVm: CartViewModel
+) {
     ElevatedCard(shape = RoundedCornerShape(16.dp)) {
-        // Imagen con crossfade. Puedes añadir placeholder/error si tu versión de Coil lo soporta.
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(p.imageUrl)
                 .crossfade(true)
                 .build(),
             contentDescription = p.title,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp)
+            modifier = Modifier.fillMaxWidth().height(120.dp)
         )
 
         Column(Modifier.padding(12.dp)) {
-            Text(p.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-            Text(p.description, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-            Spacer(Modifier.height(6.dp))
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Text(p.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(p.description, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(8.dp))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 AssistChip(onClick = {}, label = { Text(p.category) })
                 Text(p.price, style = MaterialTheme.typography.titleSmall)
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Button(onClick = {
+                    cartVm.add(p)
+                    cartVm.openPanel()
+                }) {
+                    Icon(Icons.Filled.AddShoppingCart, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Agregar")
+                }
             }
         }
     }
