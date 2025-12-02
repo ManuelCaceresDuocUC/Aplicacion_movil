@@ -34,6 +34,12 @@ android {
     }
     kotlinOptions { jvmTarget = "11" }
     buildFeatures { compose = true }
+    packaging {
+        resources {
+            pickFirst("META-INF/LICENSE.md")
+            pickFirst("META-INF/LICENSE-notice.md")
+        }
+    }
 }
 
 dependencies {
@@ -66,6 +72,26 @@ dependencies {
 
     // kotlinx-serialization (esto resuelve 'kotlinx')
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3") // ← agrega esta
+    // --- LÓGICA (Unit Tests) ---
+    // JUnit 5 (El motor de los tests)
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+
+    // Kotest (Para aserciones más legibles: "shouldBe", "shouldNotBe")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
+
+    // MockK (Para simular dependencias sin usar las reales)
+    testImplementation("io.mockk:mockk:1.13.8")
+
+    // Coroutines Test (Para runTest y controlar el tiempo)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+
+    // --- UI (Android Tests) ---
+    // Nota: Compose suele usar JUnit4 por defecto para UI, pero se puede mezclar.
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.0")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.0")
+
+    // MockK para Android (Instrumentado)
+    androidTestImplementation("io.mockk:mockk-android:1.13.8")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -74,4 +100,10 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+
+// Configuración para permitir JUnit 5 en pruebas unitarias
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

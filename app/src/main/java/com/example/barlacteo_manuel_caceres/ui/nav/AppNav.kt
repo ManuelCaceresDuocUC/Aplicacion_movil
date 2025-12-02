@@ -194,7 +194,7 @@ fun AppNav(modifier: Modifier = Modifier) {
                     composable(Route.Catalog.path) {
                         // Pasa el VM para que las tarjetas puedan agregar al carrito
                         CatalogScreen(
-                            csvUrl = "https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/catalogo_fronted.csv",
+                            csvUrl = "https://d2fggeox6a5y4y.cloudfront.net/catalogo_fronted.csv",
                             onBack = { nav.popBackStack() },
                             cartVm = cartVm
                         )

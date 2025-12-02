@@ -140,9 +140,9 @@ fun SiguienteScreen(
 @Composable
 private fun SiguienteScreenPreview() {
     val demo = listOf(
-        Oferta("1","Combo 1","Aprovecha ya !","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo1.jpg"),
-        Oferta("2","Combo 2","Delicioso","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo2.jpg"),
-        Oferta("3","Combo 3","Con credencial","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo3.jpg")
+        Oferta("1","Combo 1","Aprovecha ya !","https://d2fggeox6a5y4y.cloudfront.net/Combo1.jpg"),
+        Oferta("2","Combo 2","Delicioso","https://d2fggeox6a5y4y.cloudfront.net/Combo2.jpg"),
+        Oferta("3","Combo 3","Con credencial","https://d2fggeox6a5y4y.cloudfront.net/Combo3.jpg")
     )
 
 }
