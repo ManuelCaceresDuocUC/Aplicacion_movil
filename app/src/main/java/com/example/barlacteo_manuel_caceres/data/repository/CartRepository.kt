@@ -28,15 +28,22 @@ class CartRepository(
         carts.update { it + (userId to cart) }
     }
 
-    // === API usando tu Producto ===
     suspend fun add(userId: String, p: Producto, qty: Int = 1) {
         val current = carts.value[userId] ?: Cart()
         val pid = p.stableId()
-        val priceCents = p.price.toClpCents()
+
+        val priceCents = p.price
+            .replace("$", "")
+            .replace(".", "")
+            .trim()
+            .toLongOrNull() ?: 0L
+
         val items = current.items.toMutableList()
         val i = items.indexOfFirst { it.productId == pid }
+
         if (i >= 0) items[i] = items[i].copy(qty = items[i].qty + qty)
         else items += CartItem(pid, p.title, priceCents, p.imageUrl, qty)
+
         persist(userId, Cart(items))
     }
 

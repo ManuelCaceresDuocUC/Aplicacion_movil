@@ -39,13 +39,11 @@ fun SiguienteScreen(
     ofertas: List<Oferta> = emptyList(),
     onClickOferta: (Oferta) -> Unit = {}
 ) {
-    // Estado del pager: al menos 1 para evitar crash al medir cuando la lista está vacía.
     val pagerState = rememberPagerState(pageCount = { ofertas.size.coerceAtLeast(1) })
 
-    // ---- Auto-scroll cada 4 s cuando hay ofertas ----
     LaunchedEffect(ofertas.size) {
         if (ofertas.isNotEmpty()) {
-            while (isActive) {                  // respeta cancelación al salir de composición
+            while (isActive) {
                 delay(4000)
                 val next = (pagerState.currentPage + 1) % ofertas.size
                 pagerState.animateScrollToPage(next)
@@ -65,7 +63,6 @@ fun SiguienteScreen(
             Text("Hola, $nombre", style = MaterialTheme.typography.headlineSmall)
             Text("Tu teléfono: $fono", style = MaterialTheme.typography.bodyLarge)
 
-            // ===== Carrusel de ofertas =====
             if (ofertas.isNotEmpty()) {
                 HorizontalPager(
                     state = pagerState,
@@ -82,7 +79,6 @@ fun SiguienteScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Column {
-                            // Imagen de portada 16:9 con recorte a esquinas superiores.
                             AsyncImage(
                                 model = o.imagenUrl,
                                 contentDescription = o.titulo,
@@ -105,8 +101,6 @@ fun SiguienteScreen(
                         }
                     }
                 }
-
-                // Indicadores de página
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center
@@ -135,7 +129,6 @@ fun SiguienteScreen(
     }
 }
 
-// ---- Preview con datos de ejemplo ----
 @Preview(showBackground = true)
 @Composable
 private fun SiguienteScreenPreview() {

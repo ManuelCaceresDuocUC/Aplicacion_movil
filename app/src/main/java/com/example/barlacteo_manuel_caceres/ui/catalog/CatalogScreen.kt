@@ -20,31 +20,25 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.barlacteo_manuel_caceres.data.repository.CatalogRepository
 import com.example.barlacteo_manuel_caceres.domain.model.Producto
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRow // Asegúrate de tener compose 1.5+ o usar Accompanist si es antiguo
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.barlacteo_manuel_caceres.ui.cart.CartViewModel
 
 /**
- * Pantalla de catálogo con:
- * - Búsqueda por texto
- * - Filtro por categoría
- * - Grid adaptativo de productos
+ * Pantalla de catálogo conectada a Spring Boot.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class) // FlowRow puede requerir ExperimentalLayoutApi
 @Composable
 fun CatalogScreen(
-    csvUrl: String,
     onBack: () -> Unit,
-    cartVm: CartViewModel               // ← NUEVO
-
+    cartVm: CartViewModel
 ) {
-    val ctx = LocalContext.current
+    val repo = remember { CatalogRepository() }
 
-    // VM con repo que consume el CSV remoto
-    val vm: CatalogViewModel =
-        viewModel(factory = CatalogVMFactory(CatalogRepository(csvUrl)))
+    val vm: CatalogViewModel = viewModel(
+        factory = CatalogVMFactory(repo)
+    )
 
-    // Estado observable de la pantalla
     val st by vm.state.collectAsState()
 
     Scaffold(
@@ -60,10 +54,9 @@ fun CatalogScreen(
                 .padding(inner)
                 .padding(12.dp)
         ) {
-            // ===== Buscador =====
             OutlinedTextField(
                 value = st.query,
-                onValueChange = vm::setQuery,                 // delega cambio al VM
+                onValueChange = vm::setQuery,
                 label = { Text("Buscar productos") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -71,32 +64,29 @@ fun CatalogScreen(
             )
             Spacer(Modifier.height(8.dp))
 
-            // ===== Chips de categoría (dinámicos) =====
-            // Distinct de categorías a partir de los items cargados.
-            val cats = remember(st.items) { st.items.map { it.category }.distinct() }
+            val activeFilter = st.categoryFilter
 
-            // FlowRow permite saltar de línea de forma fluida.
+            val categorias = listOf("Sandwiches", "Completos", "Pizzas", "Ensaladas", "Agregados", "Bebidas")
+
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Chip "Todas" = sin filtro
-                AssistChip(
+                FilterChip(
+                    selected = activeFilter == null,
                     onClick = { vm.setCategory(null) },
-                    label = { Text("Todas") },
-                    // enabled solo si hay un filtro activo; si ya está en "Todas", se deshabilita
-                    enabled = st.categoryFilter != null
+                    label = { Text("Todas") }
                 )
-                cats.forEach { c ->
-                    AssistChip(
-                        onClick = { vm.setCategory(c) },
-                        label = { Text(c) },
-                        // deshabilita el chip cuando ya está seleccionado
-                        enabled = st.categoryFilter != c
+
+                categorias.forEach { c ->
+                    FilterChip(
+                        selected = activeFilter == c,
+                        onClick = {
+                            vm.setCategory(if (activeFilter == c) null else c)
+                        },
+                        label = { Text(c) }
                     )
                 }
             }
 
             Spacer(Modifier.height(8.dp))
-
-            // ===== Contenido según estado =====
             when {
                 st.loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -104,24 +94,30 @@ fun CatalogScreen(
                     }
                 }
                 st.error != null -> {
-                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Error: ${st.error}")
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = vm::refresh) { Text("Reintentar") }
+                        Button(onClick = { vm.refresh() }) { Text("Reintentar") }
                     }
                 }
                 else -> {
-                    // Lista ya filtrada en memoria por VM
-                    val items = vm.filtered()
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 160.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(items) { p ->
-                            ProductoCard(p = p, cartVm = cartVm)   // ← pasar VM
+                    val items = st.items
+
+                    if (items.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text("No se encontraron productos")
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 160.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(items) { p ->
+                                ProductoCard(p = p, cartVm = cartVm)
+                            }
                         }
                     }
                 }
@@ -130,9 +126,6 @@ fun CatalogScreen(
     }
 }
 
-/**
- * Tarjeta de producto con imagen, título, descripción corta, categoría y precio.
- */
 @Composable
 fun ProductoCard(
     p: Producto,
@@ -143,9 +136,11 @@ fun ProductoCard(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(p.imageUrl)
                 .crossfade(true)
+                .error(android.R.drawable.ic_menu_report_image)
                 .build(),
             contentDescription = p.title,
-            modifier = Modifier.fillMaxWidth().height(120.dp)
+            modifier = Modifier.fillMaxWidth().height(120.dp),
+            contentScale = androidx.compose.ui.layout.ContentScale.Crop
         )
 
         Column(Modifier.padding(12.dp)) {
@@ -154,7 +149,7 @@ fun ProductoCard(
             Spacer(Modifier.height(8.dp))
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                AssistChip(onClick = {}, label = { Text(p.category) })
+                Text(p.category, style = MaterialTheme.typography.labelSmall)
                 Text(p.price, style = MaterialTheme.typography.titleSmall)
             }
 

@@ -54,6 +54,13 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
 
+    // --- NETWORKING (RETROFIT) ---
+    // ¡ESTAS SON LAS QUE TE FALTAN PARA QUE FUNCIONE EL BACKEND!
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")       // ← AGREGA ESTA
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0") // ← AGREGA ESTA (Vital para tus JSON)
+
+    // OkHttp (Ya lo tenías, está bien para logs)
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     // Activity / Lifecycle / Navigation
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

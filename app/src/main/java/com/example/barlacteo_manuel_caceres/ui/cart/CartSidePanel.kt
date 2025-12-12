@@ -87,7 +87,7 @@ fun CartSidePanel(
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text(it.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("\$${it.priceCents / 100.0}", style = MaterialTheme.typography.labelSmall)
+                                    Text("\$${it.priceCents}", style = MaterialTheme.typography.labelSmall)
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton({ onDec(it.productId) }) { Icon(Icons.Default.Remove, null) }
@@ -100,7 +100,7 @@ fun CartSidePanel(
                     }
                     Divider()
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Text("Total: \$${totalCents / 100.0}", style = MaterialTheme.typography.titleMedium)
+                        Text("Total: \$${totalCents }", style = MaterialTheme.typography.titleMedium)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
                                 onClick = onClear,

@@ -28,11 +28,9 @@ import com.example.barlacteo_manuel_caceres.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(onContinue: (String, String) -> Unit) {
-    // Estado para el comportamiento de la AppBar al hacer scroll.
     val appBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(appBarState)
 
-    // Permite cerrar el teclado al tocar fuera de los campos.
     val focus = LocalFocusManager.current
 
     Scaffold(
@@ -55,14 +53,12 @@ fun HomeScreen(onContinue: (String, String) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo del local.
             Image(
                 painter = painterResource(R.drawable.logo_bartolo),
                 contentDescription = null, // Opcional: añade texto para accesibilidad.
                 modifier = Modifier.size(120.dp)
             )
 
-            // Formulario de nombre y teléfono. Levanta los datos vía callback.
             FormRegistro(
                 modifier = Modifier.fillMaxWidth(),
                 onContinue = onContinue

@@ -1,25 +1,20 @@
 package com.example.barlacteo_manuel_caceres.ui.profile
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.barlacteo_manuel_caceres.data.local.ProfileRepository
-import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
+import com.example.barlacteo_manuel_caceres.data.repository.ProfileRepository
 
-/**
- * Factory para crear ProfileViewModel con su dependencia ProfileRepository.
- *
- * Útil cuando no usas Hilt. Permite inyectar el repo al VM en Compose:
- *   val vm: ProfileViewModel = viewModel(factory = ProfileVMFactory(repo))
- */
 class ProfileVMFactory(
-    private val profileRepo: ProfileRepository,
-    private val accountRepo: AccountRepository
+    private val repo: ProfileRepository,
+    private val context: Context
 ) : ViewModelProvider.Factory {
+
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
-            return ProfileViewModel(profileRepo, accountRepo) as T
+            return ProfileViewModel(repo, context) as T
         }
-        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

@@ -38,19 +38,13 @@ fun AppNav(modifier: Modifier = Modifier) {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-
     val backEntry by nav.currentBackStackEntryAsState()
     val currentRoute = backEntry?.destination?.route.orEmpty()
     val isLoginOrRegister = currentRoute == Route.Login.path || currentRoute == Route.Register.path
-
     val ctx = LocalContext.current
     val accountRepo = remember { AccountRepository(ctx) }
     val currentAccount by remember { accountRepo.currentAccountFlow }.collectAsState(initial = null)
-
-    // userId para el carrito: usa fono si lo tienes; si no, “guest”
     val userId = (currentAccount?.fono ?: "guest")
-
-    // VM del carrito: vive aquí para que el FAB aparezca en todas las pantallas post-login
     val cartVm = remember(userId) {
         val repo = CartRepository(CartStore(ctx), CoroutineScope(SupervisorJob() + Dispatchers.IO))
         CartViewModel(repo, userId)
@@ -137,7 +131,6 @@ fun AppNav(modifier: Modifier = Modifier) {
                 }
             }
         ) { inner ->
-            // Capa para poder superponer el sidebar del carrito sobre el contenido
             Box(Modifier.padding(inner)) {
                 NavHost(
                     navController = nav,
@@ -174,16 +167,16 @@ fun AppNav(modifier: Modifier = Modifier) {
                         val nombre = backStack.arguments?.getString("nombre").orEmpty()
                         val fono = backStack.arguments?.getString("fono").orEmpty()
                         val demo = listOf(
-                            Oferta("1","Combo 1","Aprovecha ya !","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo1.jpg"),
-                            Oferta("2","Combo 2","Delicioso","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo2.jpg"),
-                            Oferta("3","Combo 3","Con credencial","https://barlacteo-catalogo.s3.us-east-1.amazonaws.com/Combo3.jpg")
+                            Oferta("1","Combo 1","Aprovecha ya !","https://d2fggeox6a5y4y.cloudfront.net/Combo1.jpg"),
+                            Oferta("2","Combo 2","Delicioso","https://d2fggeox6a5y4y.cloudfront.net/Combo2.jpg"),
+                            Oferta("3","Combo 3","Con credencial","https://d2fggeox6a5y4y.cloudfront.net/Combo3.jpg")
                         )
-                        com.example.barlacteo_manuel_caceres.ui.principal.SiguienteScreen(
+                        SiguienteScreen(
                             nombre = nombre,
                             fono = fono,
                             onBack = { nav.popBackStack() },
                             ofertas = demo,
-                            onClickOferta = { /* opcional */ }
+                            onClickOferta = { }
                         )
                     }
                     composable(Route.Perfil.path) {
@@ -192,16 +185,19 @@ fun AppNav(modifier: Modifier = Modifier) {
                         )
                     }
                     composable(Route.Catalog.path) {
-                        // Pasa el VM para que las tarjetas puedan agregar al carrito
                         CatalogScreen(
-                            csvUrl = "https://d2fggeox6a5y4y.cloudfront.net/catalogo_fronted.csv",
                             onBack = { nav.popBackStack() },
                             cartVm = cartVm
                         )
                     }
+                    composable("checkout") {
+                        com.example.barlacteo_manuel_caceres.ui.checkout.CheckoutScreen(
+                            cartVm = cartVm,
+                            onBack = { nav.popBackStack() },
+                            userFono = currentAccount?.fono ?: "Anonimo"
+                        )
+                    }
                 }
-
-                // Sidebar del carrito
                 CartSidePanel(
                     open = cart.isPanelOpen,
                     items = cart.items,
@@ -211,8 +207,10 @@ fun AppNav(modifier: Modifier = Modifier) {
                     onDec = cartVm::dec,
                     onRemove = cartVm::remove,
                     onClear = cartVm::clear,
-                    onCheckout = { /* TODO checkout */ }
-                )
+                    onCheckout = {
+                        cartVm.closePanel()
+                        nav.navigate("checkout")
+                    }                )
             }
         }
     }

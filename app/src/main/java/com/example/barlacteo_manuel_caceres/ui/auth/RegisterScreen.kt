@@ -29,14 +29,12 @@ fun RegisterScreen(
 ) {
     val ctx = LocalContext.current
 
-    // VM con repo inyectado manualmente (sin Hilt).
     val vm: AuthViewModel = viewModel(factory = AuthVMFactory(AccountRepository(ctx)))
 
-    // Estado observable del formulario: campos, errores y flags.
     val st by vm.state.collectAsState()
 
     Scaffold(
-        topBar = {}, // Evita doble AppBar
+        topBar = {},
     ) { inner ->
         Column(
             modifier = Modifier
@@ -44,13 +42,10 @@ fun RegisterScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Back dentro del contenido. La AppBar global ya puede tener back si quisieras.
             TextButton(onClick = onBack) { Text("Atrás") }
-
-            // ===== Campo: Nombre =====
             OutlinedTextField(
                 value = st.nombre,
-                onValueChange = vm::updateNombre,          // validación en VM
+                onValueChange = vm::updateNombre,
                 label = { Text("Nombre") },
                 isError = st.errorNombre != null,
                 supportingText = { st.errorNombre?.let { Text(it) } },
@@ -59,10 +54,9 @@ fun RegisterScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
 
-            // ===== Campo: Teléfono =====
             OutlinedTextField(
                 value = st.fono,
-                onValueChange = vm::updateFono,            // validación en VM
+                onValueChange = vm::updateFono,
                 label = { Text("Celular (+569########)") },
                 isError = st.errorFono != null,
                 supportingText = { st.errorFono?.let { Text(it) } },
@@ -72,23 +66,20 @@ fun RegisterScreen(
                     keyboardType = KeyboardType.Phone,
                     imeAction = ImeAction.Done
                 ),
-                keyboardActions = KeyboardActions(onDone = { /* opcional: vm.submit() */ })
+                keyboardActions = KeyboardActions(onDone = {  })
             )
 
-            // Error general (por ejemplo, fallo al guardar).
             AnimatedVisibility(visible = st.error != null) {
                 Text(st.error ?: "", color = MaterialTheme.colorScheme.error)
             }
 
-            // ===== Acción principal =====
             Button(
                 onClick = {
-                    // register ejecuta lógica asíncrona y, si va bien, invoca el callback provisto.
                     vm.register {
                         onRegistered(st.nombre.trim(), st.fono.trim())
                     }
                 },
-                enabled = st.canSubmit && !st.loading,     // evita spam y submit inválido
+                enabled = st.canSubmit && !st.loading,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Crossfade(targetState = st.loading) { loading ->

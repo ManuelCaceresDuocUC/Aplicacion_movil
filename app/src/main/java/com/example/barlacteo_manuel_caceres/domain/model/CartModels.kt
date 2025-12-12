@@ -17,7 +17,6 @@ data class Cart(val items: List<CartItem> = emptyList()) {
     val totalCents get() = items.sumOf { it.qty * it.priceCents }
 }
 
-// Modelo simple para tus tarjetas del catálogo
 data class Product(
     val id: String,
     val name: String,

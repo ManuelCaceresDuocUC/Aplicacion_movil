@@ -1,55 +1,90 @@
 package com.example.barlacteo_manuel_caceres.ui.profile
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.barlacteo_manuel_caceres.data.local.ProfileRepository
-import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
-import com.example.barlacteo_manuel_caceres.domain.model.Profile
+import com.example.barlacteo_manuel_caceres.data.repository.ProfileRepository
+import com.example.barlacteo_manuel_caceres.domain.model.PedidoUsuario
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import java.io.File
 
-/**
- * ViewModel de Perfil.
- *
- * Responsabilidades:
- * - Exponer el estado de la pantalla como un StateFlow<Profile>.
- * - Escuchar cambios del repositorio y reflejarlos en la UI.
- * - Orquestar actualizaciones de nombre, fono y foto.
- * - Persistir el perfil al repositorio.
- *
- * Invariante buscada:
- * - El StateFlow siempre emite un objeto Profile válido.
- */
+// Estado de la UI
+data class ProfileUiState(
+    val nombre: String = "",
+    val fono: String = "",
+    val fotoUri: String = ""
+)
+
 class ProfileViewModel(
     private val repo: ProfileRepository,
-    private val accountRepo: AccountRepository
+    private val context: Context
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(Profile())
-    val state: StateFlow<Profile> = _state
+    // Estado del Formulario
+    private val _state = MutableStateFlow(ProfileUiState())
+    val state: StateFlow<ProfileUiState> = _state
 
-    init {
-        viewModelScope.launch {
-            repo.profileFlow.collect { repoProfile ->
-                _state.value = repoProfile
-            }
-        }
-    }
+    // Estado del Historial
+    private val _historial = MutableStateFlow<List<PedidoUsuario>>(emptyList())
+    val historial: StateFlow<List<PedidoUsuario>> = _historial
 
+    // ID fijo para efectos del examen (Idealmente vendría de DataStore/Session)
+    private val ID_USUARIO_ACTUAL = 1L
+
+    // --- FUNCIONES DE CAMPO ---
     fun updateNombre(v: String) = _state.update { it.copy(nombre = v) }
-    fun updateFono(v: String)    = _state.update { it.copy(fono = v) }
-    fun updateFoto(uri: String)  = _state.update { it.copy(fotoUri = uri) }
+    fun updateFono(v: String) = _state.update { it.copy(fono = v) }
+
     fun prefill(nombre: String, fono: String) {
         _state.update { it.copy(nombre = nombre, fono = fono) }
     }
 
-    fun save() = viewModelScope.launch {
-        val profile = _state.value
-        // 1) guarda perfil en DataStore de perfil
-        repo.save(profile)
-        // 2) sincroniza/actualiza la cuenta actual
-        accountRepo.upsertAndSetCurrent(profile.nombre, profile.fono)
+    // --- CARGAR HISTORIAL ---
+    fun cargarHistorial(fono: String) = viewModelScope.launch {
+        if (fono.isNotEmpty()) {
+            val resultado = repo.obtenerHistorial(fono)
+            if (resultado.isSuccess) {
+                _historial.value = resultado.getOrDefault(emptyList())
+            }
+        }
     }
+
+    // --- GUARDAR PERFIL ---
+    fun save() = viewModelScope.launch {
+        val actual = _state.value
+        repo.actualizarPerfil(ID_USUARIO_ACTUAL, actual.nombre, actual.fono)
+    }
+
+    // --- SUBIR FOTO OPTIMIZADA ---
+    fun subirFoto(archivo: File) = viewModelScope.launch {
+
+        // 1. Actualizamos la vista previa inmediatamente
+        _state.update { it.copy(fotoUri = android.net.Uri.fromFile(archivo).toString()) }
+
+        try {
+            // 2. Preparamos el Multipart para Retrofit
+            // Le decimos que es una imagen JPEG
+            val requestFile = archivo.asRequestBody("image/jpeg".toMediaTypeOrNull())
+            val body = MultipartBody.Part.createFormData("imagen", archivo.name, requestFile)
+
+            // 3. Enviamos al servidor
+            val resultado = repo.subirFoto(ID_USUARIO_ACTUAL, body)
+
+            if (resultado.isSuccess) {
+                println("✅ Foto subida exitosamente: ${archivo.length() / 1024} KB")
+            } else {
+                println("❌ Error al subir foto")
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
 }
