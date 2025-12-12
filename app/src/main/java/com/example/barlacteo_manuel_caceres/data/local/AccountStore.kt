@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore by preferencesDataStore(name = "session_prefs")
 private val KEY_USER_NAME = stringPreferencesKey("user_name")
 private val KEY_USER_FONO = stringPreferencesKey("user_fono")
+private val KEY_USER_FOTO = stringPreferencesKey("user_foto")
 
 class AccountRepository(private val context: Context) {
 
@@ -21,8 +22,10 @@ class AccountRepository(private val context: Context) {
     val currentAccountFlow: Flow<Account?> = context.dataStore.data.map { prefs ->
         val nombre = prefs[KEY_USER_NAME]
         val fono = prefs[KEY_USER_FONO]
+        val foto = prefs[KEY_USER_FOTO]
+
         if (nombre != null && fono != null) {
-            Account(nombre, fono)
+            Account(nombre, fono, foto)
         } else {
             null
         }
@@ -31,11 +34,10 @@ class AccountRepository(private val context: Context) {
     suspend fun register(nombre: String, fono: String): Result<Unit> {
         return try {
             val request = mapOf("nombre" to nombre, "fono" to fono)
-
             val response = api.registrar(request)
 
             if (response.isSuccessful) {
-                saveSessionLocal(nombre, fono)
+                saveAccount(nombre, fono, null)
                 Result.success(Unit)
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error al registrar"
@@ -46,15 +48,16 @@ class AccountRepository(private val context: Context) {
         }
     }
 
-
     suspend fun login(nombre: String, fono: String): Result<Unit> {
         return try {
             val request = mapOf("nombre" to nombre, "fono" to fono)
-
             val response = api.login(request)
 
             if (response.isSuccessful) {
-                saveSessionLocal(nombre, fono)
+                val usuarioBackend = response.body()
+                val fotoUrl = usuarioBackend?.fotoUrl
+
+                saveAccount(nombre, fono, fotoUrl)
                 Result.success(Unit)
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Credenciales incorrectas"
@@ -68,10 +71,14 @@ class AccountRepository(private val context: Context) {
     suspend fun logout() {
         context.dataStore.edit { it.clear() }
     }
-    private suspend fun saveSessionLocal(nombre: String, fono: String) {
+
+    suspend fun saveAccount(nombre: String, fono: String, fotoUrl: String?) {
         context.dataStore.edit { prefs ->
             prefs[KEY_USER_NAME] = nombre
             prefs[KEY_USER_FONO] = fono
+            if (fotoUrl != null) {
+                prefs[KEY_USER_FOTO] = fotoUrl
+            }
         }
     }
 }

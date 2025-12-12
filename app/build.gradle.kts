@@ -99,6 +99,7 @@ dependencies {
 
     // MockK para Android (Instrumentado)
     androidTestImplementation("io.mockk:mockk-android:1.13.8")
+    implementation("io.coil-kt:coil-compose:2.6.0") // O la versión que tengas
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

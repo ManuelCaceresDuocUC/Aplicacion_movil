@@ -13,7 +13,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
-
+import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
 // Estado de la UI
 data class ProfileUiState(
     val nombre: String = "",
@@ -34,15 +34,21 @@ class ProfileViewModel(
     private val _historial = MutableStateFlow<List<PedidoUsuario>>(emptyList())
     val historial: StateFlow<List<PedidoUsuario>> = _historial
 
-    // ID fijo para efectos del examen (Idealmente vendría de DataStore/Session)
     private val ID_USUARIO_ACTUAL = 1L
 
     // --- FUNCIONES DE CAMPO ---
     fun updateNombre(v: String) = _state.update { it.copy(nombre = v) }
     fun updateFono(v: String) = _state.update { it.copy(fono = v) }
 
-    fun prefill(nombre: String, fono: String) {
-        _state.update { it.copy(nombre = nombre, fono = fono) }
+    fun prefill(nombre: String, fono: String, fotoUrl: String?) {
+        _state.update {
+            it.copy(
+                nombre = nombre,
+                fono = fono,
+                // Si hay fotoUrl, la ponemos. Si es null, dejamos vacío.
+                fotoUri = fotoUrl ?: ""
+            )
+        }
     }
 
     // --- CARGAR HISTORIAL ---
@@ -64,24 +70,33 @@ class ProfileViewModel(
     // --- SUBIR FOTO OPTIMIZADA ---
     fun subirFoto(archivo: File) = viewModelScope.launch {
 
-        // 1. Actualizamos la vista previa inmediatamente
+        // Mostramos la local mientras carga
         _state.update { it.copy(fotoUri = android.net.Uri.fromFile(archivo).toString()) }
 
         try {
-            // 2. Preparamos el Multipart para Retrofit
-            // Le decimos que es una imagen JPEG
             val requestFile = archivo.asRequestBody("image/jpeg".toMediaTypeOrNull())
             val body = MultipartBody.Part.createFormData("imagen", archivo.name, requestFile)
 
-            // 3. Enviamos al servidor
+            // Llamamos al repo
             val resultado = repo.subirFoto(ID_USUARIO_ACTUAL, body)
 
             if (resultado.isSuccess) {
-                println("✅ Foto subida exitosamente: ${archivo.length() / 1024} KB")
+                val nuevaUrl = resultado.getOrDefault("")
+                println("✅ Foto subida. Nueva URL: $nuevaUrl")
+
+                if (nuevaUrl.isNotEmpty()) {
+                    _state.update { it.copy(fotoUri = nuevaUrl) }
+
+                    val accountRepo = AccountRepository(context)
+                    accountRepo.saveAccount(
+                        nombre = _state.value.nombre,
+                        fono = _state.value.fono,
+                        fotoUrl = nuevaUrl
+                    )
+                }
             } else {
                 println("❌ Error al subir foto")
             }
-
         } catch (e: Exception) {
             e.printStackTrace()
         }

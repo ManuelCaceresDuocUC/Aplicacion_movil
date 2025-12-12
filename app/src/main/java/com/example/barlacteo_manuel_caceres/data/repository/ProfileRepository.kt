@@ -30,10 +30,16 @@ class ProfileRepository {
         }
     }
 
-    suspend fun subirFoto(id: Long, imagen: MultipartBody.Part): Result<Unit> {
+    suspend fun subirFoto(id: Long, imagen: MultipartBody.Part): Result<String> {
         return try {
-            api.subirFoto(id, imagen)
-            Result.success(Unit)
+            val response = api.subirFoto(id, imagen)
+
+            if (response.isSuccessful) {
+                val urlNueva = response.body()?.get("url") ?: ""
+                Result.success(urlNueva)
+            } else {
+                Result.failure(Exception("Error subida"))
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

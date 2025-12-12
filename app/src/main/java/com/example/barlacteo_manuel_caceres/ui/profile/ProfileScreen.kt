@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,7 @@ import com.example.barlacteo_manuel_caceres.data.local.AccountRepository
 import com.example.barlacteo_manuel_caceres.data.repository.ProfileRepository
 import com.example.barlacteo_manuel_caceres.domain.model.PedidoUsuario
 import com.example.barlacteo_manuel_caceres.utils.ImageUtils
+import coil.request.ImageRequest
 object ProfileTags {
     const val PHOTO_PREVIEW = "photo_preview"
     const val BTN_GALLERY = "btn_gallery"
@@ -60,8 +62,8 @@ fun ProfileScreen(
 
     LaunchedEffect(currentAccount) {
         currentAccount?.let {
-            vm.prefill(it.nombre, it.fono)
-            //Cargamos el historial apenas se identifica al usuario
+            vm.prefill(it.nombre, it.fono, it.fotoUrl)
+
             vm.cargarHistorial(it.fono)
         }
     }
@@ -155,12 +157,23 @@ fun ProfileContent(
                     Crossfade(targetState = fotoUri, label = "photoFade") { uri ->
                         if (uri.isNotBlank()) {
                             AsyncImage(
-                                model = uri,
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(fotoUri)
+                                    .crossfade(true)
+                                    // Esto ayuda a depurar
+                                    .listener(
+                                        onError = { _, result ->
+                                            println("🔥 ERROR CARGANDO IMAGEN: ${result.throwable.message}")
+                                            result.throwable.printStackTrace()
+                                        }
+                                    )
+                                    .build(),
                                 contentDescription = "Foto",
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(220.dp)
-                                    .testTag(ProfileTags.PHOTO_PREVIEW)
+                                    .height(220.dp),
+                                // Pon un color de fondo para saber si el componente está ahí
+                                error = painterResource(android.R.drawable.ic_delete) // O cualquier icono que tengas
                             )
                         } else {
                             Box(
