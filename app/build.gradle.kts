@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21" // ← agrega esta línea
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.0.21"
 }
 
 android {
@@ -38,7 +38,13 @@ android {
         resources {
             pickFirst("META-INF/LICENSE.md")
             pickFirst("META-INF/LICENSE-notice.md")
+            pickFirst("META-INF/LICENSE.txt")
         }
+    }
+
+    // --- ESTO ES IMPORTANTE PARA QUE NO FALLE EL CONTEXTO EN LOS TESTS ---
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -54,54 +60,33 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // --- NETWORKING (RETROFIT) ---
-    // ¡ESTAS SON LAS QUE TE FALTAN PARA QUE FUNCIONE EL BACKEND!
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")       // ← AGREGA ESTA
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0") // ← AGREGA ESTA (Vital para tus JSON)
-
-    // OkHttp (Ya lo tenías, está bien para logs)
+    // Networking
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    // Activity / Lifecycle / Navigation
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Android & Lifecycle
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
 
-    // DataStore
+    // DataStore & Coil
     implementation("androidx.datastore:datastore-preferences:1.1.1")
-
-    // Imágenes
     implementation("io.coil-kt:coil-compose:2.7.0")
 
-    // Networking opcional
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
-    // kotlinx-serialization (esto resuelve 'kotlinx')
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3") // ← agrega esta
-    // --- LÓGICA (Unit Tests) ---
-    // JUnit 5 (El motor de los tests)
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
-
-    // Kotest (Para aserciones más legibles: "shouldBe", "shouldNotBe")
-    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
-
-    // MockK (Para simular dependencias sin usar las reales)
+    // --- TEST UNITARIOS (JUNIT 4 LIMPIO) ---
+    // Eliminé JUnit 5 (Jupiter) para que no haya conflictos
+    testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.8")
-
-    // Coroutines Test (Para runTest y controlar el tiempo)
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
 
-    // --- UI (Android Tests) ---
-    // Nota: Compose suele usar JUnit4 por defecto para UI, pero se puede mezclar.
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.0")
-    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.0")
-
-    // MockK para Android (Instrumentado)
-    androidTestImplementation("io.mockk:mockk-android:1.13.8")
-    implementation("io.coil-kt:coil-compose:2.6.0") // O la versión que tengas
-
-    testImplementation(libs.junit)
+    // --- TEST INSTRUMENTADOS (UI) ---
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -110,8 +95,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
-
-// Configuración para permitir JUnit 5 en pruebas unitarias
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
+// HE BORRADO EL BLOQUE "tasks.withType<Test>" DEL FINAL
+// PORQUE ESO FORZABA JUNIT 5 Y ROMPÍA TUS PRUEBAS DE JUNIT 4.
